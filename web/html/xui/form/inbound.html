@@ -1,0 +1,164 @@
+{{define "form/inbound"}}
+<!-- base -->
+<a-form layout="inline">
+    <a-form-item label='{{ i18n "remark" }}'>
+        <a-input v-model.trim="dbInbound.remark"></a-input>
+    </a-form-item>
+    <a-form-item label='{{ i18n "enable" }}'>
+        <a-switch v-model="dbInbound.enable"></a-switch>
+    </a-form-item>
+    <a-form-item label='{{ i18n "protocol" }}'>
+        <a-select v-model="inbound.protocol" style="width: 160px;">
+            <a-select-option v-for="p in protocolOptions" :key="p" :value="p">[[ p ]]</a-select-option>
+        </a-select>
+    </a-form-item>
+    <a-form-item>
+        <span slot="label">
+            监听 IP
+            <a-tooltip>
+                <template slot="title">
+                    留空表示监听全部地址
+                </template>
+                <a-icon type="question-circle" theme="filled"></a-icon>
+            </a-tooltip>
+        </span>
+        <a-input v-model.trim="inbound.listen"></a-input>
+    </a-form-item>
+    <a-form-item label="端口">
+        <a-input type="number" v-model.number="inbound.port"></a-input>
+    </a-form-item>
+    <a-form-item>
+        <span slot="label">
+            总流量(GB)
+            <a-tooltip>
+                <template slot="title">
+                    0 表示不限制
+                </template>
+                <a-icon type="question-circle" theme="filled"></a-icon>
+            </a-tooltip>
+        </span>
+        <a-input-number v-model="dbInbound.totalGB" :min="0"></a-input-number>
+    </a-form-item>
+    <a-form-item>
+        <span slot="label">
+            IP 限制
+            <a-tooltip>
+                <template slot="title">
+                    0 表示不限制，1 表示仅允许一个源 IP
+                </template>
+                <a-icon type="question-circle" theme="filled"></a-icon>
+            </a-tooltip>
+        </span>
+        <a-input-number v-model="dbInbound.ipLimit" :min="0" :max="500"></a-input-number>
+    </a-form-item>
+    <a-form-item>
+        <span slot="label">
+            超额封禁(分钟)
+            <a-tooltip>
+                <template slot="title">
+                    超过 IP 限制后，端口封禁 N 分钟后自动恢复
+                </template>
+                <a-icon type="question-circle" theme="filled"></a-icon>
+            </a-tooltip>
+        </span>
+        <a-input-number v-model="dbInbound._ipTimeout" :min="1" :max="1440"></a-input-number>
+    </a-form-item>
+    <a-form-item>
+        <span slot="label">
+            Port 速率
+            <a-tooltip>
+                <template slot="title">
+                    格式: 50mbit（Mb） / 500kbps（Kb） / 10mbyte（MB）
+                </template>
+                <a-icon type="question-circle" theme="filled"></a-icon>
+            </a-tooltip>
+        </span>
+        <a-input v-model.trim="dbInbound._portRate" style="width: 160px;" placeholder="50 / 500kbps / 10mbyte"></a-input>
+    </a-form-item>
+    <a-form-item>
+        <span slot="label">
+            IP 速率
+            <a-tooltip>
+                <template slot="title">
+                    格式: 50mbit（Mb） / 500kbps（Kb） / 10mbyte（MB）
+                </template>
+                <a-icon type="question-circle" theme="filled"></a-icon>
+            </a-tooltip>
+        </span>
+        <a-input v-model.trim="dbInbound._ipRate" style="width: 160px;" placeholder="5 / 200kbps / 1mbyte"></a-input>
+    </a-form-item>
+    <a-form-item>
+        <span slot="label">
+            到期时间
+            <a-tooltip>
+                <template slot="title">
+                    留空则永不到期
+                </template>
+                <a-icon type="question-circle" theme="filled"></a-icon>
+            </a-tooltip>
+        </span>
+        <a-date-picker :show-time="{ format: 'HH:mm' }" format="YYYY-MM-DD HH:mm"
+                       v-model="dbInbound._expiryTime" style="width: 300px;"></a-date-picker>
+    </a-form-item>
+</a-form>
+
+<!-- vmess settings -->
+<template v-if="inbound.protocol === Protocols.VMESS">
+    {{template "form/vmess"}}
+</template>
+
+<!-- vless settings -->
+<template v-if="inbound.protocol === Protocols.VLESS">
+    {{template "form/vless"}}
+</template>
+
+<!-- trojan settings -->
+<template v-if="inbound.protocol === Protocols.TROJAN">
+    {{template "form/trojan"}}
+</template>
+
+<!-- shadowsocks -->
+<template v-if="inbound.protocol === Protocols.SHADOWSOCKS">
+    {{template "form/shadowsocks"}}
+</template>
+
+<!-- dokodemo-door -->
+<template v-if="inbound.protocol === Protocols.DOKODEMO">
+    {{template "form/dokodemo"}}
+</template>
+
+<!-- socks -->
+<template v-if="inbound.protocol === Protocols.SOCKS">
+    {{template "form/socks"}}
+</template>
+
+<!-- http -->
+<template v-if="inbound.protocol === Protocols.HTTP">
+    {{template "form/http"}}
+</template>
+
+<!-- mixed -->
+<template v-if="inbound.protocol === Protocols.MIXED">
+    {{template "form/mixed"}}
+</template>
+
+<!-- tunnel -->
+<template v-if="inbound.protocol === Protocols.TUNNEL">
+    {{template "form/tunnel"}}
+</template>
+
+<!-- stream settings -->
+<template v-if="inbound.canEnableStream()">
+    {{template "form/streamSettings"}}
+</template>
+
+<!-- tls settings -->
+<template v-if="inbound.canEnableTls()">
+    {{template "form/tlsSettings"}}
+</template>
+
+<!-- sniffing -->
+<template v-if="inbound.canSniffing()">
+    {{template "form/sniffing"}}
+</template>
+{{end}}

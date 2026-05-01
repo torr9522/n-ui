@@ -175,7 +175,7 @@ func (s *ServerService) downloadXRay(version string) (string, error) {
 	if arch == "arm64" {
 		zipName = "xray-linux-arm64.zip"
 	}
-	url := fmt.Sprintf("https://raw.githubusercontent.com/torr9522/x9526/k-ui/releases/%s", zipName)
+	url := fmt.Sprintf("https://raw.githubusercontent.com/torr9522/n-ui/n-ui/releases/%s", zipName)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err

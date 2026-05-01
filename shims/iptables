@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+MODE="${XUI_IPTABLES_MODE:-off}"
+if [[ "${MODE}" == "off" ]]; then
+    if [[ "${*}" == *"-L INPUT"* ]]; then
+        echo "Chain INPUT (policy ACCEPT)"
+        echo "target     prot opt source               destination"
+        echo "xui-block-chain  tcp  --  0.0.0.0/0      0.0.0.0/0"
+    elif [[ "${*}" == *"-nvL xui-block-chain"* ]]; then
+        echo "Chain xui-block-chain (0 references)"
+        echo "pkts bytes target     prot opt in     out     source               destination"
+        echo "0    0 DROP       tcp  --  *      *       0.0.0.0/0            0.0.0.0/0"
+    fi
+    exit 0
+fi
+exec /usr/sbin/iptables "$@"

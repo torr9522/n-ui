@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+{{template "head" .}}
+<style>
+    @media (min-width: 769px) {
+        .ant-layout-content {
+            margin: 24px 16px;
+        }
+    }
+
+    .ant-col-sm-24 {
+        margin-top: 10px;
+    }
+</style>
+<body>
+<a-layout id="app" v-cloak>
+    {{ template "commonSider" . }}
+    <a-layout id="content-layout">
+        <a-layout-content>
+            <a-spin :spinning="spinning" :delay="300" tip="loading">
+                <transition name="list" appear>
+                    <a-card hoverable style="margin-bottom: 20px;">
+                        <a-row style="margin-bottom: 16px;">
+                            <a-col :xs="24" :sm="24" :lg="12">
+                                access.log
+                                <a-switch :checked="config.accessLogEnabled"
+                                          @change="checked => updateConfig({ accessLogEnabled: checked })"></a-switch>
+                                <div style="margin-top: 8px; color: rgba(0, 0, 0, 0.45);">
+                                    控制 Xray 是否继续写入原始访问日志，切换时会立即重载 Xray 配置。
+                                </div>
+                            </a-col>
+                            <a-col :xs="24" :sm="24" :lg="12">
+                                后台聚合
+                                <a-switch :checked="config.aggregationEnabled"
+                                          @change="checked => updateConfig({ aggregationEnabled: checked })"></a-switch>
+                                <div style="margin-top: 8px; color: rgba(0, 0, 0, 0.45);">
+                                    控制面板是否继续从 access.log 增量读取并聚合到访问 IP 记录，关闭后已有记录保留但不会继续增长。
+                                </div>
+                            </a-col>
+                        </a-row>
+                        <a-row>
+                            <a-col :xs="24" :sm="24" :lg="8">
+                                端口数量
+                                <a-tag color="orange">[[ portGroups.length ]]</a-tag>
+                            </a-col>
+                            <a-col :xs="24" :sm="24" :lg="8">
+                                去重 IP 数量
+                                <a-tag color="green">[[ records.length ]]</a-tag>
+                            </a-col>
+                            <a-col :xs="24" :sm="24" :lg="8">
+                                命中总次数
+                                <a-tag color="blue">[[ totalHits ]]</a-tag>
+                            </a-col>
+                        </a-row>
+                    </a-card>
+                </transition>
+                <transition name="list" appear>
+                    <a-card hoverable>
+                        <div slot="title">
+                            <a-button type="primary" icon="reload" @click="getRecords">刷新</a-button>
+                            <a-button style="margin-left: 8px;" type="danger" icon="delete" @click="clearRecords">清空记录</a-button>
+                        </div>
+                        <a-table :columns="portColumns"
+                                 :row-key="portGroup => `port-${portGroup.port}`"
+                                 :data-source="portGroups"
+                                 :loading="spinning"
+                                 :scroll="{ x: 900 }"
+                                 :pagination="false"
+                                 style="margin-top: 20px">
+                            <template slot="port" slot-scope="text, portGroup">
+                                <a-tag color="orange">[[ portGroup.port ]]</a-tag>
+                            </template>
+                            <template slot="ipCount" slot-scope="text, portGroup">
+                                <a-tag color="green">[[ portGroup.records.length ]]</a-tag>
+                            </template>
+                            <template slot="totalHits" slot-scope="text, portGroup">
+                                <a-tag color="blue">[[ portGroup.totalHits ]]</a-tag>
+                            </template>
+                            <template slot="lastSeen" slot-scope="text, portGroup">
+                                <a-tag color="geekblue">[[ formatUnix(portGroup.lastSeen) ]]</a-tag>
+                            </template>
+                            <template slot="expandedRowRender" slot-scope="portGroup">
+                                <a-table :columns="ipColumns"
+                                         :row-key="record => record.id"
+                                         :data-source="portGroup.records"
+                                         :pagination="false"
+                                         size="small"
+                                         :scroll="{ x: 700 }">
+                                    <template slot="sourceIp" slot-scope="text, record">
+                                        <a-tag color="blue">[[ record.sourceIp ]]</a-tag>
+                                    </template>
+                                    <template slot="hitCount" slot-scope="text, record">
+                                        <a-tag color="green">[[ record.hitCount ]]</a-tag>
+                                    </template>
+                                    <template slot="firstSeen" slot-scope="text, record">
+                                        <a-tag color="cyan">[[ formatUnix(record.firstSeen) ]]</a-tag>
+                                    </template>
+                                    <template slot="lastSeen" slot-scope="text, record">
+                                        <a-tag color="geekblue">[[ formatUnix(record.lastSeen) ]]</a-tag>
+                                    </template>
+                                </a-table>
+                            </template>
+                        </a-table>
+                    </a-card>
+                </transition>
+            </a-spin>
+        </a-layout-content>
+    </a-layout>
+</a-layout>
+{{template "js" .}}
+<script>
+
+    const AUTO_REFRESH_INTERVAL_MS = 3 * 60 * 60 * 1000;
+
+    const portColumns = [{
+        title: "端口",
+        align: 'center',
+        width: 120,
+        scopedSlots: { customRender: 'port' },
+    }, {
+        title: "IP 数量",
+        align: 'center',
+        width: 120,
+        scopedSlots: { customRender: 'ipCount' },
+    }, {
+        title: "命中总次数",
+        align: 'center',
+        width: 120,
+        scopedSlots: { customRender: 'totalHits' },
+    }, {
+        title: "最后出现",
+        align: 'center',
+        width: 180,
+        scopedSlots: { customRender: 'lastSeen' },
+    }];
+
+    const ipColumns = [{
+        title: "ID",
+        align: 'center',
+        dataIndex: "id",
+        width: 60,
+    }, {
+        title: "来源 IP",
+        align: 'center',
+        width: 180,
+        scopedSlots: { customRender: 'sourceIp' },
+    }, {
+        title: "次数",
+        align: 'center',
+        width: 100,
+        scopedSlots: { customRender: 'hitCount' },
+    }, {
+        title: "首次出现",
+        align: 'center',
+        width: 180,
+        scopedSlots: { customRender: 'firstSeen' },
+    }, {
+        title: "最后出现",
+        align: 'center',
+        width: 180,
+        scopedSlots: { customRender: 'lastSeen' },
+    }];
+
+    const app = new Vue({
+        delimiters: ['[[', ']]'],
+        el: '#app',
+        data: {
+            siderDrawer,
+            spinning: false,
+            records: [],
+            config: {
+                accessLogEnabled: true,
+                aggregationEnabled: true,
+            },
+            refreshTimerId: null,
+        },
+        computed: {
+            totalHits() {
+                return this.records.reduce((sum, record) => sum + (record.hitCount || 0), 0);
+            },
+            portGroups() {
+                const groups = new Map();
+                for (const record of this.records) {
+                    const port = record.lastPort || 0;
+                    if (!groups.has(port)) {
+                        groups.set(port, {
+                            port: port,
+                            totalHits: 0,
+                            lastSeen: 0,
+                            records: [],
+                        });
+                    }
+                    const group = groups.get(port);
+                    group.records.push(record);
+                    group.totalHits += record.hitCount || 0;
+                    if ((record.lastSeen || 0) > group.lastSeen) {
+                        group.lastSeen = record.lastSeen || 0;
+                    }
+                }
+                return Array.from(groups.values())
+                    .map(group => {
+                        group.records.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
+                        return group;
+                    })
+                    .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
+            },
+        },
+        methods: {
+            loading(spinning = true) {
+                this.spinning = spinning;
+            },
+            formatUnix(ts) {
+                if (!ts) {
+                    return '-';
+                }
+                return DateUtil.formatMillis(ts * 1000);
+            },
+            async getRecords() {
+                this.loading(true);
+                const msg = await HttpUtil.post('/xui/access-ip/list');
+                this.loading(false);
+                if (!msg.success) {
+                    return;
+                }
+                this.records = msg.obj || [];
+            },
+            async getConfig() {
+                const msg = await HttpUtil.post('/xui/access-ip/config');
+                if (!msg.success) {
+                    return;
+                }
+                this.config = msg.obj || this.config;
+            },
+            async updateConfig(partial) {
+                const nextConfig = {
+                    accessLogEnabled: this.config.accessLogEnabled,
+                    aggregationEnabled: this.config.aggregationEnabled,
+                    ...partial,
+                };
+                this.loading(true);
+                const msg = await HttpUtil.post('/xui/access-ip/config/update', nextConfig);
+                this.loading(false);
+                if (!msg.success) {
+                    await this.getConfig();
+                    return;
+                }
+                this.config = nextConfig;
+            },
+            async clearRecords() {
+                await new Promise(resolve => {
+                    this.$confirm({
+                        title: '清空访问 IP 记录',
+                        content: '确定要清空当前聚合后的访问 IP 记录吗？这不会删除原始 access.log，只会清空面板显示和汇总结果。',
+                        okText: '确定',
+                        cancelText: '取消',
+                        onOk: () => resolve(),
+                    });
+                });
+                this.loading(true);
+                const msg = await HttpUtil.post('/xui/access-ip/clear');
+                this.loading(false);
+                if (!msg.success) {
+                    return;
+                }
+                await this.getRecords();
+            },
+        },
+        async mounted() {
+            await this.getConfig();
+            await this.getRecords();
+            this.refreshTimerId = setInterval(() => {
+                this.getRecords();
+            }, AUTO_REFRESH_INTERVAL_MS);
+        },
+        beforeDestroy() {
+            if (this.refreshTimerId != null) {
+                clearInterval(this.refreshTimerId);
+                this.refreshTimerId = null;
+            }
+        },
+    });
+
+</script>
+</body>
+</html>

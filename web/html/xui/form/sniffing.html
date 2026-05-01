@@ -1,0 +1,24 @@
+{{define "form/sniffing"}}
+<a-form layout="inline">
+    <a-form-item>
+            <span slot="label">
+                sniffing
+                <a-tooltip>
+                    <template slot="title">
+                        开启后可按协议特征识别流量
+                    </template>
+                    <a-icon type="question-circle" theme="filled"></a-icon>
+                </a-tooltip>
+            </span>
+        <a-switch v-model="inbound.sniffing.enabled"></a-switch>
+    </a-form-item>
+    <a-form-item v-if="inbound.sniffing.enabled">
+        <span slot="label">metadataOnly</span>
+        <a-switch v-model="inbound.sniffing.metadataOnly"></a-switch>
+    </a-form-item>
+    <a-form-item v-if="inbound.sniffing.enabled">
+        <span slot="label">routeOnly</span>
+        <a-switch v-model="inbound.sniffing.routeOnly"></a-switch>
+    </a-form-item>
+</a-form>
+{{end}}

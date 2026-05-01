@@ -7,7 +7,7 @@ plain='\033[0m'
 
 cur_dir=$(pwd)
 INSTALL_SCRIPT_DIR=""
-XUI_RAW_BASE="${XUI_RAW_BASE:-https://raw.githubusercontent.com/torr9522/x9526/k-ui}"
+XUI_RAW_BASE="${XUI_RAW_BASE:-https://raw.githubusercontent.com/torr9522/n-ui/n-ui}"
 XUI_RELEASES_RAW_BASE="${XUI_RELEASES_RAW_BASE:-${XUI_RAW_BASE}/releases}"
 
 resolve_install_script_dir() {

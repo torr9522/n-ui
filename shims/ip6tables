@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+MODE="${XUI_IPTABLES_MODE:-off}"
+if [[ "${MODE}" == "off" ]]; then
+    exit 0
+fi
+exec /usr/sbin/ip6tables "$@"
