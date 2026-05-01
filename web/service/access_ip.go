@@ -166,6 +166,9 @@ func (s *AccessIPService) IsAggregationEnabled() (bool, error) {
 }
 
 func (s *AccessIPService) GetAccessIPRecords() ([]*model.AccessIPRecord, error) {
+	if err := s.ProcessAccessLog(); err != nil {
+		return nil, err
+	}
 	db := database.GetDB()
 	records := make([]*model.AccessIPRecord, 0)
 	err := db.Order("last_seen desc").Find(&records).Error
@@ -403,6 +406,9 @@ func parseAccessIPLine(line string) (*accessIPEvent, bool) {
 	if err != nil {
 		return nil, false
 	}
+	if isLoopbackAddress(sourceIP) {
+		return nil, false
+	}
 
 	return &accessIPEvent{
 		SourceIP: sourceIP,
@@ -422,6 +428,11 @@ func splitAccessEndpoint(endpoint string) (string, int, error) {
 		host = endpoint[:idx]
 		portStr = endpoint[idx+1:]
 	}
+	if idx := strings.LastIndex(host, ":"); idx > 0 && !strings.Contains(host, ".") {
+		// IPv6 without brackets, keep as-is
+	} else if idx := strings.Index(host, ":"); idx > 0 {
+		host = host[idx+1:]
+	}
 	host = strings.Trim(host, "[]")
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
@@ -431,6 +442,18 @@ func splitAccessEndpoint(endpoint string) (string, int, error) {
 		return "", 0, common.NewError("empty source ip")
 	}
 	return host, port, nil
+}
+
+func isLoopbackAddress(host string) bool {
+	host = strings.TrimSpace(strings.Trim(host, "[]"))
+	if host == "" {
+		return true
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func formatUnix(ts int64) string {
