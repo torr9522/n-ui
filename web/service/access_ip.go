@@ -428,6 +428,12 @@ func splitAccessEndpoint(endpoint string) (string, int, error) {
 		host = endpoint[:idx]
 		portStr = endpoint[idx+1:]
 	}
+	if parts := strings.SplitN(host, ":", 2); len(parts) == 2 {
+		switch parts[0] {
+		case "tcp", "udp":
+			host = parts[1]
+		}
+	}
 	if idx := strings.LastIndex(host, ":"); idx > 0 && !strings.Contains(host, ".") {
 		// IPv6 without brackets, keep as-is
 	} else if idx := strings.Index(host, ":"); idx > 0 {
