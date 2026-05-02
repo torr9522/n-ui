@@ -58,6 +58,9 @@ func initInbound() error {
 	if err = cleanupLegacyVlessSettings(); err != nil {
 		return err
 	}
+	if err = cleanupLegacySocksSettings(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -140,6 +143,89 @@ func cleanupLegacyVlessSettings() error {
 			return err
 		}
 		if err := db.Model(&model.Inbound{}).Where("id = ?", inbound.Id).Update("settings", string(data)).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func cleanupLegacySocksSettings() error {
+	type socksInboundSettings struct {
+		Auth     string                   `json:"auth"`
+		Accounts []map[string]interface{} `json:"accounts"`
+		Udp      interface{}              `json:"udp"`
+		IP       string                   `json:"ip"`
+	}
+
+	normalizeAuth := func(auth string, hasAccounts bool) string {
+		auth = strings.TrimSpace(strings.ToLower(auth))
+		switch auth {
+		case "password":
+			return "password"
+		case "noauth":
+			return "noauth"
+		default:
+			if hasAccounts {
+				return "password"
+			}
+			return "noauth"
+		}
+	}
+
+	normalizeUDP := func(value interface{}) bool {
+		switch v := value.(type) {
+		case bool:
+			return v
+		case string:
+			switch strings.TrimSpace(strings.ToLower(v)) {
+			case "1", "true", "yes", "on":
+				return true
+			case "0", "false", "no", "off", "":
+				return false
+			}
+		case float64:
+			return v != 0
+		case int:
+			return v != 0
+		case int64:
+			return v != 0
+		case nil:
+			return true
+		}
+		return true
+	}
+
+	inbounds := make([]*model.Inbound, 0)
+	if err := db.Model(model.Inbound{}).Where("protocol in ?", []model.Protocol{model.Socks, model.Mixed}).Find(&inbounds).Error; err != nil {
+		return err
+	}
+
+	for _, inbound := range inbounds {
+		settings := strings.TrimSpace(inbound.Settings)
+		if settings == "" {
+			continue
+		}
+		var socks socksInboundSettings
+		if err := json.Unmarshal([]byte(settings), &socks); err != nil {
+			continue
+		}
+		socks.Auth = normalizeAuth(socks.Auth, len(socks.Accounts) > 0)
+		socks.Udp = normalizeUDP(socks.Udp)
+		if strings.TrimSpace(socks.IP) == "" {
+			socks.IP = "127.0.0.1"
+		}
+		if socks.Auth != "password" {
+			socks.Accounts = nil
+		}
+		data, err := json.Marshal(socks)
+		if err != nil {
+			return err
+		}
+		newSettings := string(data)
+		if newSettings == inbound.Settings {
+			continue
+		}
+		if err := db.Model(&model.Inbound{}).Where("id = ?", inbound.Id).Update("settings", newSettings).Error; err != nil {
 			return err
 		}
 	}

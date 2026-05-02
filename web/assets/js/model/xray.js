@@ -1508,6 +1508,25 @@ Inbound.SocksSettings = class extends Inbound.Settings {
         this.accounts.splice(index, 1);
     }
 
+    static parseUdp(value, defaultValue=true) {
+        if (typeof value === 'boolean') {
+            return value;
+        }
+        if (typeof value === 'string') {
+            const normalized = value.trim().toLowerCase();
+            if (['true', '1', 'yes', 'on'].includes(normalized)) {
+                return true;
+            }
+            if (['false', '0', 'no', 'off', ''].includes(normalized)) {
+                return false;
+            }
+        }
+        if (typeof value === 'number') {
+            return value !== 0;
+        }
+        return defaultValue;
+    }
+
     static fromJson(json={}) {
         const hasAuth = Object.prototype.hasOwnProperty.call(json, 'auth');
         const hasAccounts = Array.isArray(json.accounts) && json.accounts.length > 0;
@@ -1524,7 +1543,7 @@ Inbound.SocksSettings = class extends Inbound.Settings {
             Protocols.SOCKS,
             auth,
             accounts,
-            !!json.udp,
+            Inbound.SocksSettings.parseUdp(json.udp, true),
             ObjectUtil.isEmpty(json.ip) ? '127.0.0.1' : json.ip,
         );
     }
@@ -1574,7 +1593,7 @@ Inbound.MixedSettings = class extends Inbound.SocksSettings {
             Protocols.MIXED,
             auth,
             accounts,
-            !!json.udp,
+            Inbound.SocksSettings.parseUdp(json.udp, true),
             ObjectUtil.isEmpty(json.ip) ? '127.0.0.1' : json.ip,
         );
     }

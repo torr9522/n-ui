@@ -27,6 +27,13 @@ type vlessInboundSettings struct {
 	Fallbacks  []map[string]interface{} `json:"fallbacks"`
 }
 
+type socksInboundSettings struct {
+	Auth     string                   `json:"auth"`
+	Accounts []map[string]interface{} `json:"accounts"`
+	Udp      interface{}              `json:"udp"`
+	IP       string                   `json:"ip"`
+}
+
 var rateLimitRegexp = regexp.MustCompile(`(?i)^(\d+(?:\.\d+)?)(kbit|mbit|gbit|kbps|mbps|gbps|kbyte(?:/s)?|mbyte(?:/s)?|gbyte(?:/s)?)?$`)
 
 func normalizeRate(rate string) string {
@@ -110,9 +117,65 @@ func (s *InboundService) normalizeProtocolSettings(inbound *model.Inbound) {
 			return
 		}
 		inbound.Settings = string(data)
+	case model.Socks, model.Mixed:
+		var socks socksInboundSettings
+		if err := json.Unmarshal([]byte(settings), &socks); err != nil {
+			return
+		}
+		socks.Auth = normalizeSocksAuth(socks.Auth, len(socks.Accounts) > 0)
+		socks.Udp = normalizeSocksUDPValue(socks.Udp)
+		if strings.TrimSpace(socks.IP) == "" {
+			socks.IP = "127.0.0.1"
+		}
+		if socks.Auth != "password" {
+			socks.Accounts = nil
+		}
+		data, err := json.Marshal(socks)
+		if err != nil {
+			return
+		}
+		inbound.Settings = string(data)
 	default:
 		return
 	}
+}
+
+func normalizeSocksAuth(auth string, hasAccounts bool) string {
+	auth = strings.TrimSpace(strings.ToLower(auth))
+	switch auth {
+	case "password":
+		return "password"
+	case "noauth":
+		return "noauth"
+	default:
+		if hasAccounts {
+			return "password"
+		}
+		return "noauth"
+	}
+}
+
+func normalizeSocksUDPValue(value interface{}) bool {
+	switch v := value.(type) {
+	case bool:
+		return v
+	case string:
+		switch strings.TrimSpace(strings.ToLower(v)) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off", "":
+			return false
+		}
+	case float64:
+		return v != 0
+	case int:
+		return v != 0
+	case int64:
+		return v != 0
+	case nil:
+		return true
+	}
+	return true
 }
 
 func (s *InboundService) CleanupLegacyTrojanSettings() error {
@@ -140,6 +203,27 @@ func (s *InboundService) CleanupLegacyVlessSettings() error {
 	db := database.GetDB()
 	inbounds := make([]*model.Inbound, 0)
 	err := db.Model(model.Inbound{}).Where("protocol = ?", model.VLESS).Find(&inbounds).Error
+	if err != nil {
+		return err
+	}
+
+	for _, inbound := range inbounds {
+		oldSettings := inbound.Settings
+		s.normalizeProtocolSettings(inbound)
+		if inbound.Settings == oldSettings {
+			continue
+		}
+		if err := db.Model(&model.Inbound{}).Where("id = ?", inbound.Id).Update("settings", inbound.Settings).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *InboundService) CleanupLegacySocksSettings() error {
+	db := database.GetDB()
+	inbounds := make([]*model.Inbound, 0)
+	err := db.Model(model.Inbound{}).Where("protocol in ?", []model.Protocol{model.Socks, model.Mixed}).Find(&inbounds).Error
 	if err != nil {
 		return err
 	}
