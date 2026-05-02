@@ -269,11 +269,8 @@ if [ -n "$DESIRED" ]; then
       nft "add rule $TABLE_FAMILY $TABLE_NAME $INPUT_CHAIN_NAME tcp dport $PORT ip saddr @$SETNAME accept"
       nft "add rule $TABLE_FAMILY $TABLE_NAME $INPUT_CHAIN_NAME udp dport $PORT ip saddr @$SETNAME accept"
 
-      nft "add rule $TABLE_FAMILY $TABLE_NAME $INPUT_CHAIN_NAME tcp dport $PORT add @$SETNAME { ip saddr timeout $TIMEOUT }"
-      nft "add rule $TABLE_FAMILY $TABLE_NAME $INPUT_CHAIN_NAME udp dport $PORT add @$SETNAME { ip saddr timeout $TIMEOUT }"
-
-      nft "add rule $TABLE_FAMILY $TABLE_NAME $INPUT_CHAIN_NAME tcp dport $PORT ip saddr @$SETNAME accept"
-      nft "add rule $TABLE_FAMILY $TABLE_NAME $INPUT_CHAIN_NAME udp dport $PORT ip saddr @$SETNAME accept"
+      nft "add rule $TABLE_FAMILY $TABLE_NAME $INPUT_CHAIN_NAME tcp dport $PORT add @$SETNAME { ip saddr timeout $TIMEOUT } accept"
+      nft "add rule $TABLE_FAMILY $TABLE_NAME $INPUT_CHAIN_NAME udp dport $PORT add @$SETNAME { ip saddr timeout $TIMEOUT } accept"
 
       nft "add rule $TABLE_FAMILY $TABLE_NAME $INPUT_CHAIN_NAME tcp dport $PORT add @blocked_ports { tcp dport timeout $TIMEOUT } counter drop"
       nft "add rule $TABLE_FAMILY $TABLE_NAME $INPUT_CHAIN_NAME udp dport $PORT add @blocked_ports { udp dport timeout $TIMEOUT } counter drop"
