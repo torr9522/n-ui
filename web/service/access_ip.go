@@ -428,18 +428,7 @@ func splitAccessEndpoint(endpoint string) (string, int, error) {
 		host = endpoint[:idx]
 		portStr = endpoint[idx+1:]
 	}
-	if parts := strings.SplitN(host, ":", 2); len(parts) == 2 {
-		switch parts[0] {
-		case "tcp", "udp":
-			host = parts[1]
-		}
-	}
-	if idx := strings.LastIndex(host, ":"); idx > 0 && !strings.Contains(host, ".") {
-		// IPv6 without brackets, keep as-is
-	} else if idx := strings.Index(host, ":"); idx > 0 {
-		host = host[idx+1:]
-	}
-	host = strings.Trim(host, "[]")
+	host = normalizeSourceHost(host)
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return "", 0, err
@@ -450,8 +439,33 @@ func splitAccessEndpoint(endpoint string) (string, int, error) {
 	return host, port, nil
 }
 
-func isLoopbackAddress(host string) bool {
+func normalizeSourceHost(host string) string {
 	host = strings.TrimSpace(strings.Trim(host, "[]"))
+	for {
+		parts := strings.SplitN(host, ":", 2)
+		if len(parts) != 2 {
+			break
+		}
+		prefix := strings.ToLower(strings.TrimSpace(parts[0]))
+		switch prefix {
+		case "tcp", "udp", "unix":
+			host = strings.TrimSpace(parts[1])
+			continue
+		}
+		break
+	}
+	host = strings.TrimSpace(strings.Trim(host, "[]"))
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.String()
+	}
+	if strings.Count(host, ":") > 1 {
+		return host
+	}
+	return host
+}
+
+func isLoopbackAddress(host string) bool {
+	host = normalizeSourceHost(host)
 	if host == "" {
 		return true
 	}
