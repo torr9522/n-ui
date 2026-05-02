@@ -6,7 +6,7 @@
 
 支持单端口多用户、多协议的 xray 面板，究极缝合怪    
 通过免费的Telegram bot方便快捷地进行监控、管理你的代理服务  
-&#x26A1;`xtls-rprx-vision`与`reality`快速入手请看[这里](https://github.com/torr9522/x9526/wiki/%E8%8A%82%E7%82%B9%E9%85%8D%E7%BD%AE)  
+&#x26A1;`xtls-rprx-vision`与`reality`快速入手请看[这里](https://github.com/torr9522/n-ui/wiki/%E8%8A%82%E7%82%B9%E9%85%8D%E7%BD%AE)  
 欢迎大家使用并反馈意见或提交Pr,帮助项目更好的改善  
 如果您觉得本项目对您有所帮助,不妨给个star:star2:支持我  
 或者你恰巧有购买服务器的需求,可以通过文末的赞助部分支持我~ 
@@ -33,23 +33,23 @@
 - Telegram bot通知、控制功能
 - 更多高级配置项，详见面板 
 
-:bulb:具体**使用、配置细节以及问题排查**请点击这里:point_right:[WIKI](https://github.com/torr9522/x9526/wiki):point_left:  
- Specific **Usages、Configurations and Debug** please refer to [WIKI](https://github.com/torr9522/x9526/wiki)    
+:bulb:具体**使用、配置细节以及问题排查**请点击这里:point_right:[WIKI](https://github.com/torr9522/n-ui/wiki):point_left:  
+ Specific **Usages、Configurations and Debug** please refer to [WIKI](https://github.com/torr9522/n-ui/wiki)    
 # 一键安装
 在安装前请确保你的系统支持`bash`环境,且系统网络正常  
 
 &#x26A1;从原版升级也可使用该命令，数据不会丢失&#x26A1;
 
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/torr9522/x9526/k-ui/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/torr9522/n-ui/n-ui/install.sh)
 ```    
 For English Users,please use the following command to install English supported version:  
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/torr9522/x9526/k-ui/install_en.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/torr9522/n-ui/n-ui/install_en.sh)
 ```
 如需安装指定的版本,可以在上述命令中指定版本号,如指定版本为`0.3.4.4`,安装命令如下：    
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/torr9522/x9526/k-ui/install.sh) 0.3.4.4   
+bash <(curl -Ls https://raw.githubusercontent.com/torr9522/n-ui/n-ui/install.sh) 0.3.4.4   
 ```
 
 # 效果预览  
@@ -222,4 +222,4 @@ VPS推送可关注电报[频道](https://t.me/VpsReStockAlert)
 
 ## Stargazers over time
 
-[![Stargazers over time](https://starchart.cc/torr9522/x9526.svg)](https://starchart.cc/torr9522/x9526)
+[![Stargazers over time](https://starchart.cc/torr9522/n-ui.svg)](https://starchart.cc/torr9522/n-ui)

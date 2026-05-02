@@ -12,8 +12,8 @@ declare -r DEFAULT_LOG_FILE_DELETE_TRIGGER=35
 PATH_FOR_GEO_IP='/usr/local/x-ui/bin/geoip.dat'
 PATH_FOR_CONFIG='/usr/local/x-ui/bin/config.json'
 PATH_FOR_GEO_SITE='/usr/local/x-ui/bin/geosite.dat'
-URL_FOR_GEO_IP='https://raw.githubusercontent.com/torr9522/x9526/k-ui/bin/geoip.dat'
-URL_FOR_GEO_SITE='https://raw.githubusercontent.com/torr9522/x9526/k-ui/bin/geosite.dat'
+URL_FOR_GEO_IP='https://raw.githubusercontent.com/torr9522/n-ui/n-ui/bin/geoip.dat'
+URL_FOR_GEO_SITE='https://raw.githubusercontent.com/torr9522/n-ui/n-ui/bin/geosite.dat'
 
 #Add some basic function here
 function LOGD() {
@@ -104,7 +104,7 @@ before_show_menu() {
 }
 
 install() {
-    bash <(curl -Ls https://raw.githubusercontent.com/torr9522/x9526/k-ui/install_en.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/torr9522/n-ui/n-ui/install_en.sh)
     if [[ $? == 0 ]]; then
         if [[ $# == 0 ]]; then
             start
@@ -123,7 +123,7 @@ update() {
         fi
         return 0
     fi
-    bash <(curl -Ls https://raw.githubusercontent.com/torr9522/x9526/k-ui/install_en.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/torr9522/n-ui/n-ui/install_en.sh)
     if [[ $? == 0 ]]; then
         LOGI "upgrade finished,restart completed"
         exit 0
@@ -306,13 +306,13 @@ migrate_v2_ui() {
 
 install_bbr() {
     # temporary workaround for installing bbr
-    bash <(curl -L -s https://raw.githubusercontent.com/torr9522/x9526/k-ui/scripts/bbr.sh)
+    bash <(curl -L -s https://raw.githubusercontent.com/torr9522/n-ui/n-ui/scripts/bbr.sh)
     echo ""
     before_show_menu
 }
 
 update_shell() {
-    wget -O /usr/bin/x-ui -N --no-check-certificate https://raw.githubusercontent.com/torr9522/x9526/k-ui/x-ui_en.sh
+    wget -O /usr/bin/x-ui -N --no-check-certificate https://raw.githubusercontent.com/torr9522/n-ui/n-ui/x-ui_en.sh
     if [[ $? != 0 ]]; then
         echo ""
         LOGE "update shell script failed,please check whether your server can access github"
@@ -447,7 +447,7 @@ ssl_cert_issue() {
 install_acme() {
     cd ~
     LOGI "install acme..."
-    curl -Ls https://raw.githubusercontent.com/torr9522/x9526/k-ui/scripts/acme_install.sh | sh
+    curl -Ls https://raw.githubusercontent.com/torr9522/n-ui/n-ui/scripts/acme_install.sh | sh
     if [ $? -ne 0 ]; then
         LOGE "install acme failed"
         return 1

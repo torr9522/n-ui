@@ -8,7 +8,7 @@ plain='\033[0m'
 cur_dir=$(pwd)
 INSTALL_SCRIPT_DIR=""
 XUI_RAW_BASE="${XUI_RAW_BASE:-https://raw.githubusercontent.com/torr9522/n-ui/n-ui}"
-XUI_RELEASES_RAW_BASE="${XUI_RELEASES_RAW_BASE:-${XUI_RAW_BASE}/releases}"
+XUI_RELEASES_BASE="${XUI_RELEASES_BASE:-${XUI_RELEASES_RAW_BASE:-https://github.com/torr9522/n-ui/releases/download/n-ui-assets}}"
 
 resolve_install_script_dir() {
     local script_source="${BASH_SOURCE[0]:-$0}"
@@ -96,7 +96,7 @@ find_local_source_dir() {
 
 sync_default_xray_assets() {
     local xray_zip="/tmp/xray-${arch}.zip"
-    local xray_url="${XUI_XRAY_URL:-${XUI_RELEASES_RAW_BASE}/xray-linux-${arch}.zip}"
+    local xray_url="${XUI_XRAY_URL:-${XUI_RELEASES_BASE}/xray-linux-${arch}.zip}"
     local candidate=""
     local local_candidates=(
         "${INSTALL_SCRIPT_DIR}/releases/xray-linux-${arch}.zip"
@@ -534,11 +534,11 @@ install_x-ui() {
             echo -e "${yellow}Only amd64 local release is provided, fallback to amd64 package and rebuild locally.${plain}"
             package_arch="amd64"
         fi
-        url="${XUI_RELEASES_RAW_BASE}/x-ui-linux-${package_arch}.tar.gz"
+        url="${XUI_PACKAGE_URL:-${XUI_RELEASES_BASE}/x-ui-linux-${package_arch}.tar.gz}"
         package_file="/usr/local/x-ui-linux-${package_arch}.tar.gz"
         echo -e "install source: ${url}"
         if ! download_file "${package_file}" "${url}"; then
-            error_exit "download failed, please check k-ui releases files"
+            error_exit "download failed, please check n-ui release assets"
         fi
         if ! tar -tzf "${package_file}" >/dev/null 2>&1; then
             error_exit "下载的 x-ui 安装包损坏：${package_file}"
