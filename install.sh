@@ -230,10 +230,10 @@ fi
 
 install_base() {
     if [[ x"${release}" == x"centos" ]]; then
-        yum install wget curl tar jq nftables sqlite python3 unzip -y || error_exit "基础依赖安装失败。"
+        yum install wget curl tar jq nftables sqlite python3 unzip logrotate -y || error_exit "基础依赖安装失败。"
     else
         apt-get update || error_exit "apt-get update 失败。"
-        DEBIAN_FRONTEND=noninteractive apt-get install -y wget curl tar jq nftables sqlite3 python3 unzip || error_exit "基础依赖安装失败。"
+        DEBIAN_FRONTEND=noninteractive apt-get install -y wget curl tar jq nftables sqlite3 python3 unzip logrotate || error_exit "基础依赖安装失败。"
     fi
 }
 
@@ -401,6 +401,27 @@ install_portlimit_sync() {
         return 1
     fi
     XUI_PORTLIMIT_FORCE_REBUILD=1 systemctl start xui-portlimit-sync.service || true
+}
+
+install_access_logrotate() {
+    command -v logrotate >/dev/null 2>&1 || return 0
+
+    cat >/etc/logrotate.d/x-ui-xray-access <<'EOF'
+/var/log/xray/access.log {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    create 0644 root root
+}
+EOF
+
+    if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q '^logrotate\.timer'; then
+        systemctl enable --now logrotate.timer >/dev/null 2>&1 || true
+    fi
 }
 
 # ── 安装后自动随机配置（不再询问用户）────────────────────────────────────────
@@ -572,6 +593,7 @@ install_x-ui() {
     if ! install_portlimit_sync; then
         warn_msg "xui-portlimit-sync 安装失败，不影响面板启动，可稍后手动重试。"
     fi
+    install_access_logrotate
 
     # ── 安装完成，展示面板信息 ─────────────────────────────────────────────────
     echo -e ""
