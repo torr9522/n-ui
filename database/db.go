@@ -2,6 +2,7 @@ package database
 
 import (
 	"encoding/json"
+	"fmt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -237,7 +238,64 @@ func initSetting() error {
 }
 
 func initAccessIPRecord() error {
-	return db.AutoMigrate(&model.AccessIPRecord{})
+	if err := db.AutoMigrate(&model.AccessIPRecord{}); err != nil {
+		return err
+	}
+	return migrateAccessIPRecordIndexes()
+}
+
+func migrateAccessIPRecordIndexes() error {
+	type indexInfo struct {
+		Name   string
+		Unique int
+	}
+
+	indexes := make([]indexInfo, 0)
+	if err := db.Raw("PRAGMA index_list('access_ip_records')").Scan(&indexes).Error; err != nil {
+		return err
+	}
+
+	hasCompositeUnique := false
+	legacySourceIPIndexes := make([]string, 0)
+	for _, idx := range indexes {
+		if idx.Name == "idx_access_ip_port" && idx.Unique == 1 {
+			hasCompositeUnique = true
+		}
+		if idx.Unique != 1 || idx.Name == "idx_access_ip_port" {
+			continue
+		}
+		cols := make([]struct {
+			Seqno int
+			Cid   int
+			Name  string
+		}, 0)
+		query := fmt.Sprintf("PRAGMA index_info('%s')", idx.Name)
+		if err := db.Raw(query).Scan(&cols).Error; err != nil {
+			return err
+		}
+		if len(cols) == 1 && cols[0].Name == "source_ip" {
+			legacySourceIPIndexes = append(legacySourceIPIndexes, idx.Name)
+		}
+	}
+
+	if hasCompositeUnique && len(legacySourceIPIndexes) == 0 {
+		return nil
+	}
+
+	for _, idxName := range legacySourceIPIndexes {
+		stmt := fmt.Sprintf("DROP INDEX IF EXISTS %s", idxName)
+		if err := db.Exec(stmt).Error; err != nil {
+			return fmt.Errorf("drop legacy access_ip_records source_ip index %s failed: %w", idxName, err)
+		}
+	}
+
+	if !hasCompositeUnique {
+		if err := db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_access_ip_port ON access_ip_records(source_ip, last_port)").Error; err != nil {
+			return fmt.Errorf("create access_ip_records composite index failed: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func InitDB(dbPath string) error {

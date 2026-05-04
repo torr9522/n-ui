@@ -74,8 +74,8 @@ type Setting struct {
 
 type AccessIPRecord struct {
 	Id        int    `json:"id" gorm:"primaryKey;autoIncrement"`
-	SourceIP  string `json:"sourceIp" gorm:"uniqueIndex;size:64"`
-	LastPort  int    `json:"lastPort"`
+	SourceIP  string `json:"sourceIp" gorm:"uniqueIndex:idx_access_ip_port;size:64"`
+	LastPort  int    `json:"lastPort" gorm:"uniqueIndex:idx_access_ip_port"`
 	HitCount  int64  `json:"hitCount"`
 	FirstSeen int64  `json:"firstSeen"`
 	LastSeen  int64  `json:"lastSeen" gorm:"index"`

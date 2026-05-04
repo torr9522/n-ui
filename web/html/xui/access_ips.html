@@ -64,8 +64,10 @@
                                  :row-key="portGroup => `port-${portGroup.port}`"
                                  :data-source="portGroups"
                                  :loading="spinning"
+                                 :expanded-row-keys="expandedPortKeys"
                                  :scroll="{ x: 900 }"
                                  :pagination="false"
+                                 @expand="onPortExpand"
                                  style="margin-top: 20px">
                             <template slot="port" slot-scope="text, portGroup">
                                 <a-tag color="orange">[[ portGroup.port ]]</a-tag>
@@ -168,6 +170,7 @@
             siderDrawer,
             spinning: false,
             records: [],
+            expandedPortKeys: [],
             config: {
                 accessLogEnabled: true,
                 aggregationEnabled: true,
@@ -223,6 +226,7 @@
                     return;
                 }
                 this.records = msg.obj || [];
+                this.syncExpandedPortKeys();
             },
             async getConfig() {
                 const msg = await HttpUtil.post('/xui/access-ip/config');
@@ -263,6 +267,20 @@
                     return;
                 }
                 await this.getRecords();
+            },
+            onPortExpand(expanded, portGroup) {
+                const key = `port-${portGroup.port}`;
+                if (expanded) {
+                    if (!this.expandedPortKeys.includes(key)) {
+                        this.expandedPortKeys = this.expandedPortKeys.concat(key);
+                    }
+                    return;
+                }
+                this.expandedPortKeys = this.expandedPortKeys.filter(item => item !== key);
+            },
+            syncExpandedPortKeys() {
+                const validKeys = new Set(this.portGroups.map(group => `port-${group.port}`));
+                this.expandedPortKeys = this.expandedPortKeys.filter(key => validKeys.has(key));
             },
         },
         async mounted() {

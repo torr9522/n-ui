@@ -13,7 +13,9 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 	"x-ui/logger"
 	"x-ui/util/sys"
@@ -175,7 +177,31 @@ func (s *ServerService) downloadXRay(version string) (string, error) {
 	if arch == "arm64" {
 		zipName = "xray-linux-arm64.zip"
 	}
-	url := fmt.Sprintf("https://github.com/torr9522/n-ui/releases/download/n-ui-assets/%s", zipName)
+
+	localCandidates := []string{
+		filepath.Join("releases", zipName),
+		filepath.Join("/usr/local/x-ui/releases", zipName),
+	}
+	for _, candidate := range localCandidates {
+		info, err := os.Stat(candidate)
+		if err != nil || info.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(candidate)
+		if err != nil {
+			return "", err
+		}
+		if err := os.WriteFile(zipName, data, 0644); err != nil {
+			return "", err
+		}
+		return zipName, nil
+	}
+
+	baseURL := strings.TrimRight(os.Getenv("XUI_RELEASES_BASE"), "/")
+	if baseURL == "" {
+		baseURL = "https://github.com/torr9522/n-ui/releases/download/n-ui-assets"
+	}
+	url := fmt.Sprintf("%s/%s", baseURL, zipName)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err

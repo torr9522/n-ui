@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,6 +31,8 @@ const (
 )
 
 var accessIPMu sync.Mutex
+var inboundTagPortPattern = regexp.MustCompile(`\[inbound-(\d+)`)
+var accessIPEventPattern = regexp.MustCompile(`(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d+)\s+from\s+(\S+)\s+accepted\s+.*?\[inbound-(\d+)\]`)
 
 type AccessIPService struct{}
 
@@ -240,7 +243,7 @@ func (s *AccessIPService) ApplyAccessLogSetting(config *xray.Config) error {
 func (s *AccessIPService) upsertRecord(event *accessIPEvent) error {
 	db := database.GetDB()
 	record := &model.AccessIPRecord{}
-	err := db.Where("source_ip = ?", event.SourceIP).First(record).Error
+	err := db.Where("source_ip = ? AND last_port = ?", event.SourceIP, event.Port).First(record).Error
 	if database.IsNotFound(err) {
 		record.SourceIP = event.SourceIP
 		record.LastPort = event.Port
@@ -286,7 +289,7 @@ func (s *AccessIPService) dumpSummary() error {
 		lastSeen := formatUnix(record.LastSeen)
 		_, err = fmt.Fprintf(
 			file,
-			"count=%d ip=%s last_port=%d first_seen=%s last_seen=%s\n",
+			"count=%d ip=%s inbound_port=%d first_seen=%s last_seen=%s\n",
 			record.HitCount,
 			record.SourceIP,
 			record.LastPort,
@@ -382,28 +385,31 @@ func (s *AccessIPService) skipCurrentAccessLog() error {
 
 func parseAccessIPLine(line string) (*accessIPEvent, bool) {
 	line = strings.TrimSpace(line)
-	if line == "" || !strings.Contains(line, " from ") || !strings.Contains(line, " accepted ") {
-		return nil, false
-	}
-	if strings.Contains(line, xrayInternalAccessMark) {
+	if line == "" {
 		return nil, false
 	}
 
-	timeSplit := strings.SplitN(line, " from ", 2)
-	if len(timeSplit) != 2 {
+	matches := accessIPEventPattern.FindAllStringSubmatch(line, -1)
+	if len(matches) == 0 {
 		return nil, false
 	}
-	seenAt, err := time.ParseInLocation(xrayAccessTimeLayout, timeSplit[0], time.Local)
+
+	match := matches[len(matches)-1]
+	if len(match) != 4 {
+		return nil, false
+	}
+
+	seenAt, err := time.ParseInLocation(xrayAccessTimeLayout, match[1], time.Local)
 	if err != nil {
 		return nil, false
 	}
 
-	endpointSplit := strings.SplitN(timeSplit[1], " accepted ", 2)
-	if len(endpointSplit) != 2 {
+	sourceIP, _, err := splitAccessEndpoint(match[2])
+	if err != nil {
 		return nil, false
 	}
-	sourceIP, port, err := splitAccessEndpoint(endpointSplit[0])
-	if err != nil {
+	inboundPort, err := strconv.Atoi(match[3])
+	if err != nil || inboundPort <= 0 {
 		return nil, false
 	}
 	if isLoopbackAddress(sourceIP) {
@@ -412,7 +418,7 @@ func parseAccessIPLine(line string) (*accessIPEvent, bool) {
 
 	return &accessIPEvent{
 		SourceIP: sourceIP,
-		Port:     port,
+		Port:     inboundPort,
 		SeenAt:   seenAt.Unix(),
 	}, true
 }

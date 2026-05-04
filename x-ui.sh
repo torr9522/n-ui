@@ -5,6 +5,12 @@ green='\033[0;32m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
+XUI_RAW_BASE="${XUI_RAW_BASE:-https://raw.githubusercontent.com/torr9522/n-ui/n-ui}"
+XUI_LOCAL_INSTALL_SCRIPT="/usr/local/x-ui/install.sh"
+XUI_LOCAL_SHELL_SCRIPT="/usr/local/x-ui/x-ui.sh"
+XUI_BBR_URL="${XUI_BBR_URL:-${XUI_RAW_BASE}/scripts/bbr.sh}"
+XUI_ACME_INSTALL_URL="${XUI_ACME_INSTALL_URL:-${XUI_RAW_BASE}/scripts/acme_install.sh}"
+
 #consts for log check and clear,unit:M
 declare -r DEFAULT_LOG_FILE_DELETE_TRIGGER=35
 
@@ -12,8 +18,8 @@ declare -r DEFAULT_LOG_FILE_DELETE_TRIGGER=35
 PATH_FOR_GEO_IP='/usr/local/x-ui/bin/geoip.dat'
 PATH_FOR_CONFIG='/usr/local/x-ui/bin/config.json'
 PATH_FOR_GEO_SITE='/usr/local/x-ui/bin/geosite.dat'
-URL_FOR_GEO_IP='https://raw.githubusercontent.com/torr9522/n-ui/n-ui/bin/geoip.dat'
-URL_FOR_GEO_SITE='https://raw.githubusercontent.com/torr9522/n-ui/n-ui/bin/geosite.dat'
+URL_FOR_GEO_IP="${XUI_GEOIP_URL:-${XUI_RAW_BASE}/bin/geoip.dat}"
+URL_FOR_GEO_SITE="${XUI_GEOSITE_URL:-${XUI_RAW_BASE}/bin/geosite.dat}"
 
 #Add some basic function here
 function LOGD() {
@@ -26,6 +32,18 @@ function LOGE() {
 
 function LOGI() {
     echo -e "${green}[INF] $* ${plain}"
+}
+
+run_install_script() {
+    local script_url="$1"
+    shift
+
+    if [[ -f "${XUI_LOCAL_INSTALL_SCRIPT}" ]]; then
+        bash "${XUI_LOCAL_INSTALL_SCRIPT}" "$@"
+        return $?
+    fi
+
+    bash <(curl -Ls "${script_url}") "$@"
 }
 # check root
 [[ $EUID -ne 0 ]] && LOGE "错误:  必须使用root用户运行此脚本!\n" && exit 1
@@ -104,7 +122,7 @@ before_show_menu() {
 }
 
 install() {
-    bash <(curl -Ls https://raw.githubusercontent.com/torr9522/n-ui/n-ui/install.sh)
+    run_install_script "${XUI_RAW_BASE}/install.sh"
     if [[ $? == 0 ]]; then
         if [[ $# == 0 ]]; then
             start
@@ -123,7 +141,7 @@ update() {
         fi
         return 0
     fi
-    bash <(curl -Ls https://raw.githubusercontent.com/torr9522/n-ui/n-ui/install.sh)
+    run_install_script "${XUI_RAW_BASE}/install.sh"
     if [[ $? == 0 ]]; then
         LOGI "更新完成，已自动重启面板 "
         exit 0
@@ -306,13 +324,17 @@ migrate_v2_ui() {
 
 install_bbr() {
     # temporary workaround for installing bb
-    bash <(curl -L -s https://raw.githubusercontent.com/torr9522/n-ui/n-ui/scripts/bbr.sh)
+    bash <(curl -L -s "${XUI_BBR_URL}")
     echo ""
     before_show_menu
 }
 
 update_shell() {
-    wget -O /usr/bin/x-ui -N --no-check-certificate https://raw.githubusercontent.com/torr9522/n-ui/n-ui/x-ui.sh
+    if [[ -f "${XUI_LOCAL_SHELL_SCRIPT}" ]]; then
+        cp -f "${XUI_LOCAL_SHELL_SCRIPT}" /usr/bin/x-ui
+    else
+        wget -O /usr/bin/x-ui -N --no-check-certificate "${XUI_RAW_BASE}/x-ui.sh"
+    fi
     if [[ $? != 0 ]]; then
         echo ""
         LOGE "下载脚本失败，请检查本机能否连接 Github"
@@ -446,7 +468,7 @@ ssl_cert_issue() {
 install_acme() {
     cd ~
     LOGI "开始安装acme脚本..."
-    curl -Ls https://raw.githubusercontent.com/torr9522/n-ui/n-ui/scripts/acme_install.sh | sh
+    curl -Ls "${XUI_ACME_INSTALL_URL}" | sh
     if [ $? -ne 0 ]; then
         LOGE "acme安装失败"
         return 1
