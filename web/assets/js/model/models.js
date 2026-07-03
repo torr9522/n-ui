@@ -196,10 +196,9 @@ class DBInbound {
         }
     }
 
-    genLink(overrideAddress = '') {
-        const normalizedOverrideAddress = normalizeShareAddress(overrideAddress);
+    genLink() {
         const inbound = this.toInbound();
-        return inbound.genLink(normalizedOverrideAddress || this.address, this.remark, normalizedOverrideAddress !== '');
+        return inbound.genLink(this.address, this.remark);
     }
 }
 

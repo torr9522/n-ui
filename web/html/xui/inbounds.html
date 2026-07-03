@@ -64,9 +64,6 @@
                                         <a-menu-item v-if="dbInbound.hasLink()" key="qrcode">
                                             <a-icon type="qrcode"></a-icon>二维码
                                         </a-menu-item>
-                                        <a-menu-item v-if="dbInbound.hasLink()" key="customQrcode">
-                                            <a-icon type="qrcode"></a-icon>自定义二维码
-                                        </a-menu-item>
                                         <a-menu-item key="edit">
                                             <a-icon type="edit"></a-icon>编辑
                                         </a-menu-item>
@@ -256,9 +253,6 @@
                     case "qrcode":
                         this.showQrcode(dbInbound);
                         break;
-                    case "customQrcode":
-                        this.showCustomQrcode(dbInbound);
-                        break;
                     case "edit":
                         this.openEditInbound(dbInbound);
                         break;
@@ -367,17 +361,6 @@
             showQrcode(dbInbound) {
                 const link = dbInbound.genLink();
                 qrModal.show('二维码', link);
-            },
-            showCustomQrcode(dbInbound) {
-                promptModal.open({
-                    title: '自定义分享地址',
-                    value: '',
-                    okText: '生成二维码',
-                    confirm: (customShareAddress) => {
-                        const link = dbInbound.genLink(customShareAddress);
-                        qrModal.show('二维码', link);
-                    },
-                });
             },
             showInfo(dbInbound) {
                 infoModal.show(dbInbound);
