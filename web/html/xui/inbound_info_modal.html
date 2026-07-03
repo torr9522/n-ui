@@ -4,6 +4,16 @@
          :closable="true" :mask-closable="true"
          ok-text="复制链接" cancel-text='{{ i18n "close" }}' :ok-button-props="infoModal.okBtnPros">
     <inbound-info :db-inbound="dbInbound" :inbound="inbound"></inbound-info>
+    <template v-if="dbInbound.hasLink()">
+        <a-input v-model.trim="infoModal.customShareAddress"
+                 placeholder="留空则使用原始地址"
+                 style="margin-top: 12px;"></a-input>
+        <a-button id="inbound-info-modal-custom-copy-btn"
+                  style="margin-top: 8px;"
+                  icon="copy">
+            复制自定义分享链接
+        </a-button>
+    </template>
 </a-modal>
 <script>
 
@@ -11,7 +21,9 @@
         visible: false,
         inbound: new Inbound(),
         dbInbound: new DBInbound(),
+        customShareAddress: '',
         clipboard: null,
+        customClipboard: null,
         okBtnPros: {
             attrs: {
                 id: "inbound-info-modal-ok-btn",
@@ -21,6 +33,7 @@
         show(dbInbound) {
             this.inbound = dbInbound.toInbound();
             this.dbInbound = new DBInbound(dbInbound);
+            this.customShareAddress = '';
             this.visible = true;
 
             if (dbInbound.hasLink()) {
@@ -35,6 +48,14 @@
                         text: () => this.dbInbound.genLink(),
                     });
                     this.clipboard.on('success', () => app.$message.success('复制成功'));
+                });
+            }
+            if (dbInbound.hasLink() && this.customClipboard == null) {
+                infoModalApp.$nextTick(() => {
+                    this.customClipboard = new ClipboardJS('#inbound-info-modal-custom-copy-btn', {
+                        text: () => this.dbInbound.genLink(this.customShareAddress),
+                    });
+                    this.customClipboard.on('success', () => app.$message.success('复制成功'));
                 });
             }
         },

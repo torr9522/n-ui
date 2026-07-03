@@ -53,6 +53,46 @@ Object.freeze(RULE_IP);
 Object.freeze(RULE_DOMAIN);
 Object.freeze(FLOW_CONTROL);
 
+function normalizeShareAddress(input, forUri = false) {
+    let address = String(input || '').trim().replace(/\s+/g, '');
+    if (address === '') {
+        return '';
+    }
+
+    address = address.replace(/^https?:\/\//i, '').replace(/^\/\//, '');
+    if (address === '') {
+        return '';
+    }
+
+    if (address[0] === '[') {
+        const end = address.indexOf(']');
+        if (end >= 0) {
+            address = address.slice(1, end);
+        }
+    } else {
+        const end = address.search(/[/?#]/);
+        if (end >= 0) {
+            address = address.slice(0, end);
+        }
+        const portMatch = address.match(/^([^:]+):\d+$/);
+        if (portMatch) {
+            address = portMatch[1];
+        }
+    }
+
+    address = address.replace(/\/+$/g, '');
+    if (address[0] === '[' && address[address.length - 1] === ']') {
+        address = address.slice(1, -1);
+    }
+    if (address === '') {
+        return '';
+    }
+    if (forUri && address.indexOf(':') >= 0) {
+        return `[${address}]`;
+    }
+    return address;
+}
+
 class XrayCommonClass {
 
     static toJsonArray(arr) {
@@ -880,7 +920,7 @@ class Inbound extends XrayCommonClass {
         this.sniffing = new Sniffing();
     }
 
-    genVmessLink(address='', remark='') {
+    genVmessLink(address='', remark='', isAddressOverridden=false) {
         if (this.protocol !== Protocols.VMESS) {
             return '';
         }
@@ -922,7 +962,7 @@ class Inbound extends XrayCommonClass {
             path = this.stream.grpc.serviceName;
         }
 
-        if (this.stream.security === 'tls') {
+        if (!isAddressOverridden && this.stream.security === 'tls') {
             if (!ObjectUtil.isEmpty(this.stream.tls.server)) {
                 address = this.stream.tls.server;
             }
@@ -944,7 +984,7 @@ class Inbound extends XrayCommonClass {
         return 'vmess://' + base64(JSON.stringify(obj, null, 2));
     }
 
-    genVLESSLink(address = '', remark='') {
+    genVLESSLink(address = '', remark='', isAddressOverridden=false) {
         const settings = this.settings;
         const uuid = settings.vlesses[0].id;
         const port = this.port;
@@ -1002,8 +1042,10 @@ class Inbound extends XrayCommonClass {
 
         if (this.stream.security === 'tls') {
             if (!ObjectUtil.isEmpty(this.stream.tls.server)) {
-                address = this.stream.tls.server;
-                params.set("sni", address);
+                if (!isAddressOverridden) {
+                    address = this.stream.tls.server;
+                }
+                params.set("sni", this.stream.tls.server);
             }
         }
 
@@ -1011,7 +1053,8 @@ class Inbound extends XrayCommonClass {
             params.set("flow", this.settings.vlesses[0].flow);
         }
 
-        const link = `vless://${uuid}@${address}:${port}`;
+        const linkAddress = isAddressOverridden ? normalizeShareAddress(address, true) : address;
+        const link = `vless://${uuid}@${linkAddress}:${port}`;
         const url = new URL(link);
         for (const [key, value] of params) {
             url.searchParams.set(key, value)
@@ -1020,27 +1063,29 @@ class Inbound extends XrayCommonClass {
         return url.toString();
     }
 
-    genSSLink(address='', remark='') {
+    genSSLink(address='', remark='', isAddressOverridden=false) {
         let settings = this.settings;
         const server = this.stream.tls.server;
-        if (!ObjectUtil.isEmpty(server)) {
+        if (!isAddressOverridden && !ObjectUtil.isEmpty(server)) {
             address = server;
         }
-        return 'ss://' + safeBase64(settings.method + ':' + settings.password + '@' + address + ':' + this.port)
+        const linkAddress = isAddressOverridden ? normalizeShareAddress(address, true) : address;
+        return 'ss://' + safeBase64(settings.method + ':' + settings.password + '@' + linkAddress + ':' + this.port)
             + '#' + encodeURIComponent(remark);
     }
 
-    genTrojanLink(address='', remark='') {
+    genTrojanLink(address='', remark='', isAddressOverridden=false) {
         let settings = this.settings;
-        return `trojan://${settings.clients[0].password}@${address}:${this.port}#${encodeURIComponent(remark)}`;
+        const linkAddress = isAddressOverridden ? normalizeShareAddress(address, true) : address;
+        return `trojan://${settings.clients[0].password}@${linkAddress}:${this.port}#${encodeURIComponent(remark)}`;
     }
 
-    genLink(address='', remark='') {
+    genLink(address='', remark='', isAddressOverridden=false) {
         switch (this.protocol) {
-            case Protocols.VMESS: return this.genVmessLink(address, remark);
-            case Protocols.VLESS: return this.genVLESSLink(address, remark);
-            case Protocols.SHADOWSOCKS: return this.genSSLink(address, remark);
-            case Protocols.TROJAN: return this.genTrojanLink(address, remark);
+            case Protocols.VMESS: return this.genVmessLink(address, remark, isAddressOverridden);
+            case Protocols.VLESS: return this.genVLESSLink(address, remark, isAddressOverridden);
+            case Protocols.SHADOWSOCKS: return this.genSSLink(address, remark, isAddressOverridden);
+            case Protocols.TROJAN: return this.genTrojanLink(address, remark, isAddressOverridden);
             default: return '';
         }
     }
